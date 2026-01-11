@@ -802,8 +802,9 @@ class NotificationService:
         }
 
         try:
-            logger.info(f"Sending text message to {target_wxid}")
+            logger.info(f"Sending text message to 20904051581@chatroom")
             response = requests.post(self._webhook_url, json=data1, params=params)
+            logger.info(f"Sending text message to 48683142917@chatroom")
             response = requests.post(self._webhook_url, json=data2, params=params)
             response.raise_for_status()
         
