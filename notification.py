@@ -41,12 +41,16 @@ class NotificationService:
         """
         self._webhook_url = webhook_url or get_config().wechat_webhook_url
         
-        if not self._webhook_url:
-            logger.warning("企业微信 Webhook URL 未配置，将不发送推送通知")
+        self._wechathook_url = get_config().wechathook_url
+        
+        #if not self._webhook_url:
+        if not self._wechathook_url:
+            logger.warning("微信 Webhook URL 未配置，将不发送推送通知")
     
     def is_available(self) -> bool:
         """检查通知服务是否可用"""
-        return bool(self._webhook_url)
+        #return bool(self._webhook_url)
+        return bool(self._wechathook_url)
     
     def generate_daily_report(
         self, 
@@ -735,9 +739,9 @@ class NotificationService:
         content = "\n".join(lines)
         
         # 最终检查长度
-        if len(content) > 3800:
-            logger.warning(f"精简报告仍超长({len(content)}字符)，进行截断")
-            content = content[:3800] + "\n\n...(内容过长已截断)"
+        #if len(content) > 3800:
+        #    logger.warning(f"精简报告仍超长({len(content)}字符)，进行截断")
+        #    content = content[:3800] + "\n\n...(内容过长已截断)"
         
         return content
     
@@ -766,15 +770,58 @@ class NotificationService:
             return False
         
         # 检查长度
-        if len(content) > 4000:
-            logger.warning(f"消息内容超长({len(content)}字符)，将截断至4000字符")
-            content = content[:3950] + "\n\n...(内容过长已截断，详见完整报告)"
+        #if len(content) > 4000:
+        #    logger.warning(f"消息内容超长({len(content)}字符)，将截断至4000字符")
+        #    content = content[:3950] + "\n\n...(内容过长已截断，详见完整报告)"
         
         try:
-            return self._send_single_message(content)
+            #return self._send_single_message(content)
+            return self._send_weixin_text(content, "wxid_alwc6m6hw4rs22")
         except Exception as e:
-            logger.error(f"发送企业微信消息失败: {e}")
+            logger.error(f"发送微信消息失败: {e}")
             return False
+
+    def _send_weixin_text(self, message_content: str, bot_wxid: str) -> bool:
+        """
+        发送微信普通文本消息(用于定时任务)
+        """   
+        params = {
+            "wxid": bot_wxid
+        }
+    
+        data1 = {
+            "type": "sendText",
+            "data": {
+                "wxid": "20904051581@chatroom",
+                "msg": message_content.replace('\n', '\r')
+            }
+        }
+
+        data2 = {
+            "type": "sendText",
+            "data": {
+                "wxid": "48683142917@chatroom",
+                "msg": message_content.replace('\n', '\r')
+            }
+        }
+
+        try:
+            logger.info(f"Sending text message to {target_wxid}")
+            response = requests.post(self._wechathook_url, json=data1, params=params)
+            response = requests.post(self._wechathook_url, json=data2, params=params)
+            response.raise_for_status()
+        
+            result = response.json()
+            if result.get('code') == 200:
+                logger.info("Text message sent successfully")
+                return True
+            else:
+                logger.error(f"Text message failed: {result.get('msg')}")
+                return False
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"WeChat API request failed: {str(e)}")
+            return False            
     
     def _send_single_message(self, content: str) -> bool:
         """发送单条消息"""
@@ -949,7 +996,6 @@ def send_daily_report(results: List[AnalysisResult]) -> bool:
     
     # 推送到企业微信
     return service.send_to_wechat(report)
-
 
 if __name__ == "__main__":
     # 测试代码
