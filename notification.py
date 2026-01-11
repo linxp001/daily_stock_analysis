@@ -41,16 +41,12 @@ class NotificationService:
         """
         self._webhook_url = webhook_url or get_config().wechat_webhook_url
         
-        self._wechathook_url = get_config().wechathook_url
-        
-        #if not self._webhook_url:
-        if not self._wechathook_url:
+        if not self._webhook_url:
             logger.warning("微信 Webhook URL 未配置，将不发送推送通知")
     
     def is_available(self) -> bool:
         """检查通知服务是否可用"""
-        #return bool(self._webhook_url)
-        return bool(self._wechathook_url)
+        return bool(self._webhook_url)
     
     def generate_daily_report(
         self, 
@@ -807,8 +803,8 @@ class NotificationService:
 
         try:
             logger.info(f"Sending text message to {target_wxid}")
-            response = requests.post(self._wechathook_url, json=data1, params=params)
-            response = requests.post(self._wechathook_url, json=data2, params=params)
+            response = requests.post(self._webhook_url, json=data1, params=params)
+            response = requests.post(self._webhook_url, json=data2, params=params)
             response.raise_for_status()
         
             result = response.json()
