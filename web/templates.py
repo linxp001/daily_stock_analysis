@@ -233,6 +233,24 @@ button:active {
     white-space: nowrap;
 }
 
+.report-select {
+    padding: 0.75rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    background: white;
+    color: var(--text);
+    cursor: pointer;
+    min-width: 110px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.report-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
 .btn-analysis {
     background-color: var(--success);
 }
@@ -617,6 +635,7 @@ def render_config_page(
     const codeInput = document.getElementById('analysis_code');
     const submitBtn = document.getElementById('analysis_btn');
     const taskList = document.getElementById('task_list');
+    const reportTypeSelect = document.getElementById('report_type');
     
     // 任务管理
     const tasks = new Map(); // taskId -> {task, pollCount}
@@ -723,6 +742,7 @@ def render_config_page(
                 '<div class="task-meta">' +
                     '<span>⏱ ' + formatTime(task.start_time) + '</span>' +
                     '<span>⏳ ' + calcDuration(task.start_time, task.end_time) + '</span>' +
+                    '<span>' + (task.report_type === 'full' ? '📊完整' : '📝精简') + '</span>' +
                 '</div>' +
             '</div>' +
             resultHtml +
@@ -839,7 +859,8 @@ def render_config_page(
         submitBtn.disabled = true;
         submitBtn.textContent = '提交中...';
         
-        fetch('/analysis?code=' + encodeURIComponent(code))
+        const reportType = reportTypeSelect.value;
+        fetch('/analysis?code=' + encodeURIComponent(code) + '&report_type=' + encodeURIComponent(reportType))
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
@@ -848,7 +869,8 @@ def render_config_page(
                         task: {
                             code: code,
                             status: 'running',
-                            start_time: new Date().toISOString()
+                            start_time: new Date().toISOString(),
+                            report_type: reportType
                         },
                         pollCount: 0
                     });
@@ -904,6 +926,10 @@ def render_config_page(
               maxlength="8"
               autocomplete="off"
           />
+          <select id="report_type" class="report-select" title="选择报告类型">
+            <option value="simple">📝 精简报告</option>
+            <option value="full">📊 完整报告</option>
+          </select>
           <button type="button" id="analysis_btn" class="btn-analysis" onclick="submitAnalysis()" disabled>
             🚀 分析
           </button>

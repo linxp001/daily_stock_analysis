@@ -48,6 +48,7 @@ from data_provider.akshare_fetcher import AkshareFetcher, RealtimeQuote, ChipDis
 from analyzer import GeminiAnalyzer, AnalysisResult, STOCK_NAME_MAP
 from notification import NotificationService, NotificationChannel, send_daily_report
 from search_service import SearchService, SearchResponse
+from enums import ReportType
 from stock_analyzer import StockTrendAnalyzer, TrendAnalysisResult
 from market_analyzer import MarketAnalyzer
 
@@ -424,9 +425,10 @@ class StockAnalysisPipeline:
     
     def process_single_stock(
         self, 
-        code: str,
+        code: str, 
         skip_analysis: bool = False,
-        single_stock_notify: bool = False
+        single_stock_notify: bool = False,
+        report_type: ReportType = ReportType.SIMPLE
     ) -> Optional[AnalysisResult]:
         """
         处理单只股票的完整流程
@@ -443,6 +445,7 @@ class StockAnalysisPipeline:
             code: 股票代码
             skip_analysis: 是否跳过 AI 分析
             single_stock_notify: 是否启用单股推送模式（每分析完一只立即推送）
+            report_type: 报告类型枚举
             
         Returns:
             AnalysisResult 或 None
@@ -473,8 +476,17 @@ class StockAnalysisPipeline:
                 # 单股推送模式（#55）：每分析完一只股票立即推送
                 if single_stock_notify and self.notifier.is_available():
                     try:
-                        single_report = self.notifier.generate_single_stock_report(result)
-                        if self.notifier.send(single_report):
+                        # 根据报告类型选择生成方法
+                        if report_type == ReportType.FULL:
+                            # 完整报告：使用决策仪表盘格式
+                            report_content = self.notifier.generate_dashboard_report([result])
+                            logger.info(f"[{code}] 使用完整报告格式")
+                        else:
+                            # 精简报告：使用单股报告格式（默认）
+                            report_content = self.notifier.generate_single_stock_report(result)
+                            logger.info(f"[{code}] 使用精简报告格式")
+                        
+                        if self.notifier.send(report_content):
                             logger.info(f"[{code}] 单股推送成功")
                         else:
                             logger.warning(f"[{code}] 单股推送失败")
