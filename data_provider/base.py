@@ -259,33 +259,47 @@ class DataFetcherManager:
     def _init_default_fetchers(self) -> None:
         """
         初始化默认数据源列表
-        
-        按优先级排序：
-        0. EfinanceFetcher (Priority 0) - 最高优先级
-        1. AkshareFetcher (Priority 1)
-        2. TushareFetcher (Priority 2)
-        3. BaostockFetcher (Priority 3)
-        4. YfinanceFetcher (Priority 4)
+
+        优先级动态调整逻辑：
+        - 如果配置了 TUSHARE_TOKEN：Tushare 优先级提升为 0（最高）
+        - 否则按默认优先级：
+          0. EfinanceFetcher (Priority 0) - 最高优先级
+          1. AkshareFetcher (Priority 1)
+          2. TushareFetcher (Priority 2)
+          3. BaostockFetcher (Priority 3)
+          4. YfinanceFetcher (Priority 4)
         """
         from .efinance_fetcher import EfinanceFetcher
         from .akshare_fetcher import AkshareFetcher
         from .tushare_fetcher import TushareFetcher
         from .baostock_fetcher import BaostockFetcher
         from .yfinance_fetcher import YfinanceFetcher
-        
+        from config import get_config
+
+        config = get_config()
+
+        # 创建所有数据源实例（优先级在各 Fetcher 的 __init__ 中确定）
+        efinance = EfinanceFetcher()
+        akshare = AkshareFetcher()
+        tushare = TushareFetcher()  # 会根据 Token 配置自动调整优先级
+        baostock = BaostockFetcher()
+        yfinance = YfinanceFetcher()
+
+        # 初始化数据源列表
         self._fetchers = [
-            EfinanceFetcher(),   # 最高优先级
-            AkshareFetcher(),
-            TushareFetcher(),
-            BaostockFetcher(),
-            YfinanceFetcher(),
+            efinance,
+            akshare,
+            tushare,
+            baostock,
+            yfinance,
         ]
-        
-        # 按优先级排序
+
+        # 按优先级排序（Tushare 如果配置了 Token 且初始化成功，优先级为 0）
         self._fetchers.sort(key=lambda f: f.priority)
-        
-        logger.info(f"已初始化 {len(self._fetchers)} 个数据源: " + 
-                   ", ".join([f.name for f in self._fetchers]))
+
+        # 构建优先级说明
+        priority_info = ", ".join([f"{f.name}(P{f.priority})" for f in self._fetchers])
+        logger.info(f"已初始化 {len(self._fetchers)} 个数据源（按优先级）: {priority_info}")
     
     def add_fetcher(self, fetcher: BaseFetcher) -> None:
         """添加数据源并重新排序"""

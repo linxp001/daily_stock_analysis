@@ -283,11 +283,12 @@ class Config:
         
         # 检查通知配置
         has_notification = (
-            self.wechat_webhook_url or 
+            self.wechat_webhook_url or
             self.feishu_webhook_url or
             (self.telegram_bot_token and self.telegram_chat_id) or
             (self.email_sender and self.email_password) or
-            (self.pushover_user_key and self.pushover_api_token)
+            (self.pushover_user_key and self.pushover_api_token) or
+            (self.custom_webhook_urls and self.custom_webhook_bearer_token)
         )
         if not has_notification:
             warnings.append("提示：未配置通知渠道，将不发送推送通知")

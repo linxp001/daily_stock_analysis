@@ -52,12 +52,12 @@ class TushareFetcher(BaseFetcher):
     """
     
     name = "TushareFetcher"
-    priority = 2
-    
+    priority = 2  # 默认优先级，会在 __init__ 中根据配置动态调整
+
     def __init__(self, rate_limit_per_minute: int = 80):
         """
         初始化 TushareFetcher
-        
+
         Args:
             rate_limit_per_minute: 每分钟最大请求数（默认80，Tushare免费配额）
         """
@@ -65,9 +65,12 @@ class TushareFetcher(BaseFetcher):
         self._call_count = 0  # 当前分钟内的调用次数
         self._minute_start: Optional[float] = None  # 当前计数周期开始时间
         self._api: Optional[object] = None  # Tushare API 实例
-        
+
         # 尝试初始化 API
         self._init_api()
+
+        # 根据 API 初始化结果动态调整优先级
+        self.priority = self._determine_priority()
     
     def _init_api(self) -> None:
         """
@@ -95,7 +98,37 @@ class TushareFetcher(BaseFetcher):
         except Exception as e:
             logger.error(f"Tushare API 初始化失败: {e}")
             self._api = None
-    
+
+    def _determine_priority(self) -> int:
+        """
+        根据 Token 配置和 API 初始化状态确定优先级
+
+        策略：
+        - Token 配置且 API 初始化成功：优先级 0（最高）
+        - 其他情况：优先级 2（默认）
+
+        Returns:
+            优先级数字（0=最高，数字越大优先级越低）
+        """
+        config = get_config()
+
+        if config.tushare_token and self._api is not None:
+            # Token 配置且 API 初始化成功，提升为最高优先级
+            logger.info("✅ 检测到 TUSHARE_TOKEN 且 API 初始化成功，Tushare 数据源优先级提升为最高 (Priority 0)")
+            return 0
+
+        # Token 未配置或 API 初始化失败，保持默认优先级
+        return 2
+
+    def is_available(self) -> bool:
+        """
+        检查数据源是否可用
+
+        Returns:
+            True 表示可用，False 表示不可用
+        """
+        return self._api is not None
+
     def _check_rate_limit(self) -> None:
         """
         检查并执行速率限制
